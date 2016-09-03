@@ -89,7 +89,7 @@ public class AudioRecoder {
 		int minBufferSize = AudioRecord.getMinBufferSize(Constans.KEY_SAMPLE_RATE,Constans. CHANNEL_MODE,
 				Constans.AUDIO_FORMAT);
 		mRecord = new AudioRecord(MediaRecorder.AudioSource.MIC,
-				Constans.KEY_SAMPLE_RATE,Constans. CHANNEL_MODE, Constans.AUDIO_FORMAT, minBufferSize * 2);
+				Constans.KEY_SAMPLE_RATE,Constans.CHANNEL_MODE, Constans.AUDIO_FORMAT, minBufferSize * 2);
 		mRecord.startRecording();
 		return true;
 	}
@@ -101,7 +101,7 @@ public class AudioRecoder {
 				return ;
 			}
 			while(isRunning){
-				mTimeStamp=System.currentTimeMillis();
+				mTimeStamp=System.nanoTime()/1000;
 				int num = mRecord.read(mBuffer, 0, mFrameSize);
 				Log.d(TAG, "buffer = " + mBuffer.toString() + ", num = " + num);
 				encode(mBuffer);
@@ -142,33 +142,33 @@ public class AudioRecoder {
 			int inputBufferIndex = mEncoder.dequeueInputBuffer(-1);
 			if (inputBufferIndex >= 0){
 				mEncoder.queueInputBuffer(inputBufferIndex, 0, 0,
-						System.currentTimeMillis(), MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+						mTimeStamp, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
 			}
 			int outputBufferIndex = mEncoder.dequeueOutputBuffer(mBufferInfo,0);
 			while (outputBufferIndex >= 0) {
 				ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
 				//给adts头字段空出7的字节
-				int length=mBufferInfo.size+7;
-				if(mFrameByte==null||mFrameByte.length<length){
-					mFrameByte=new byte[length];
-				}
-				addADTStoPacket(mFrameByte,length);
-				outputBuffer.position(mBufferInfo.offset);
-				outputBuffer.limit(mBufferInfo.size);
-				outputBuffer.get(mFrameByte,7,mBufferInfo.size);
-				try {
-					mOutput.write(mFrameByte,0,length);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				mMuxerBuffer.clear();
-				mMuxerBuffer.put(mFrameByte,0,length);
-				mBufferInfo.offset=0;
-				mBufferInfo.size=length;
+//				int length=mBufferInfo.size+7;
+//				if(mFrameByte==null||mFrameByte.length<length){
+//					mFrameByte=new byte[length];
+//				}
+//				addADTStoPacket(mFrameByte,length);
+//				outputBuffer.position(mBufferInfo.offset);
+//				outputBuffer.limit(mBufferInfo.size);
+//				outputBuffer.get(mFrameByte,7,mBufferInfo.size);
+//				try {
+//					mOutput.write(mFrameByte,0,length);
+//				} catch (IOException e) {
+//					e.printStackTrace();
+//				}
+//				mMuxerBuffer.clear();
+//				mMuxerBuffer.put(mFrameByte,0,length);
+//				mBufferInfo.offset=0;
+//				mBufferInfo.size=length;
 				if(!mMuxer.isStarted()){
 					mMuxer.start();
 				}
-				mMuxer.writeSampleData(mAudioTrackIndex,mMuxerBuffer,mBufferInfo);
+				mMuxer.writeSampleData(mAudioTrackIndex,outputBuffer,mBufferInfo);
 				outputBuffer.clear();
 				mEncoder.releaseOutputBuffer(outputBufferIndex, false);
 				outputBufferIndex = mEncoder.dequeueOutputBuffer(mBufferInfo, 0);
@@ -184,7 +184,7 @@ public class AudioRecoder {
 				inputBuffer.put(data);
 				inputBuffer.limit(data.length);
 				mEncoder.queueInputBuffer(inputBufferIndex, 0, data.length,
-						mTimeStamp, 0);
+					mTimeStamp, 0);
 			}
 			int outputBufferIndex = mEncoder.dequeueOutputBuffer(mBufferInfo, 0);
 			if(outputBufferIndex==MediaCodec.INFO_OUTPUT_FORMAT_CHANGED){
@@ -196,27 +196,28 @@ public class AudioRecoder {
 				Log.d("mxxx","encode");
 				ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
 				//给adts头字段空出7的字节
-				int length=mBufferInfo.size+7;
-				if(mFrameByte==null||mFrameByte.length<length){
-					mFrameByte=new byte[length];
-				}
-				addADTStoPacket(mFrameByte,length);
-				outputBuffer.position(mBufferInfo.offset);
-				outputBuffer.limit(mBufferInfo.size);
-				outputBuffer.get(mFrameByte,7,mBufferInfo.size);
-				try {
-					mOutput.write(mFrameByte,0,length);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				mMuxerBuffer.clear();
-				mMuxerBuffer.put(mFrameByte,0,length);
-				mBufferInfo.offset=0;
-				mBufferInfo.size=length;
+//				int length=mBufferInfo.size+7;
+//				if(mFrameByte==null||mFrameByte.length<length){
+//					mFrameByte=new byte[length];
+//				}
+//				addADTStoPacket(mFrameByte,length);
+//				outputBuffer.position(mBufferInfo.offset);
+//				outputBuffer.limit(mBufferInfo.size);
+//				outputBuffer.get(mFrameByte,7,mBufferInfo.size);
+//				try {
+//					mOutput.write(mFrameByte,0,length);
+//				} catch (IOException e) {
+//					e.printStackTrace();
+//				}
+//				mMuxerBuffer.clear();
+//				mMuxerBuffer.put(mFrameByte,0,length);
+//				mBufferInfo.offset=0;
+//				mBufferInfo.size=length;
 				if(!mMuxer.isStarted()){
 					mMuxer.start();
 				}
-				mMuxer.writeSampleData(mAudioTrackIndex,mMuxerBuffer,mBufferInfo);
+				mMuxer.writeSampleData(mAudioTrackIndex,outputBuffer,mBufferInfo);
+				Log.d("music",mBufferInfo.presentationTimeUs+"");
 				outputBuffer.clear();
 				mEncoder.releaseOutputBuffer(outputBufferIndex, false);
 				outputBufferIndex = mEncoder.dequeueOutputBuffer(mBufferInfo, 0);

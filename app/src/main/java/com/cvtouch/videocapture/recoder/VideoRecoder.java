@@ -5,7 +5,6 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaFormat;
-import android.media.MediaMuxer;
 import android.util.Log;
 import android.view.SurfaceHolder;
 
@@ -17,6 +16,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -79,11 +79,6 @@ public class VideoRecoder {
                 worker.interrupt();
                 worker=null;
             }
-        }
-
-
-        public MediaFormat getOutputFormat(){
-            return mMediaFormat;
         }
 
         protected void onEncodedSample(MediaCodec.BufferInfo info, ByteBuffer data) {
@@ -157,6 +152,7 @@ public class VideoRecoder {
         if(mCamera ==null)
             mCamera = Camera.open(Camera.CameraInfo.CAMERA_FACING_BACK);
         Camera.Parameters parameters = mCamera.getParameters();
+        List<int[]> fps=parameters.getSupportedPreviewFpsRange();
         List<Camera.Size> videoSize=parameters.getSupportedPreviewSizes();
 //        WIDTH=videoSize.get(videoSize.size()-1).width;
 //        HEIGHT=videoSize.get(videoSize.size()-1).height;
@@ -170,24 +166,30 @@ public class VideoRecoder {
         parameters.setPreviewSize(WIDTH,HEIGHT);
         parameters.setPictureSize(WIDTH,HEIGHT);
         mCamera.setParameters(parameters);
-        mCameraBuffer=new byte[WIDTH*HEIGHT*3/2];
-        mCamera.addCallbackBuffer(mCameraBuffer);
+//        mCameraBuffer=new byte[WIDTH*HEIGHT*3/2];
+//        mCamera.addCallbackBuffer(mCameraBuffer);
         if (mCamera != null) {
             try {
                 mCamera.setPreviewDisplay(mPreview);
-                mCamera.setPreviewCallbackWithBuffer(new Camera.PreviewCallback() {
+                mCamera.setPreviewCallback(new Camera.PreviewCallback() {
                     @Override
                     public void onPreviewFrame(byte[] data, Camera camera) {
-                        Log.d("videoRecoder",data.length+"");
+//                        try {
+//                            mOutput.write(data,0,data.length);
+//                        } catch (IOException e) {
+//                            e.printStackTrace();
+//                        }
+
                         if(isRunning){
                             try {
-                                Frame frame=new Frame(data,System.currentTimeMillis());
+                                Frame frame=new Frame(data,System.nanoTime());
+                                Log.d("queuesize",mQueue.size()+"");
                                 mQueue.put(frame);
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
                         }
-                        camera.addCallbackBuffer(mCameraBuffer);
+//                        camera.addCallbackBuffer(mCameraBuffer);
                     }
                 });
             } catch (IOException e) {
@@ -207,6 +209,7 @@ public class VideoRecoder {
         while (outputBufferIndex >= 0) {
             ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
             onEncodedSample(mBufferInfo,outputBuffer);
+            outputBuffer.clear();
             mEncoder.releaseOutputBuffer(outputBufferIndex, false);
             outputBufferIndex = mEncoder.dequeueOutputBuffer(mBufferInfo, 0);
         }
@@ -227,6 +230,7 @@ public class VideoRecoder {
         while (outputBufferIndex >= 0) {
             ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
             onEncodedSample(mBufferInfo,outputBuffer);
+            outputBuffer.clear();
             mEncoder.releaseOutputBuffer(outputBufferIndex, false);
             outputBufferIndex = mEncoder.dequeueOutputBuffer(mBufferInfo, 0);
         }

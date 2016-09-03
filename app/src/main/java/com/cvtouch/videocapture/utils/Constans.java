@@ -16,8 +16,6 @@ public class Constans {
     public  static final int KEY_SAMPLE_RATE=44100;
     public  static final int KEY_BIT_RATE=64000;
     public  static final int KEY_AAC_PROFILE= MediaCodecInfo.CodecProfileLevel.AACObjectLC;
-    int WAIT_TIME=10000;
     public  static final int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
     public  static final int CHANNEL_MODE = AudioFormat.CHANNEL_IN_STEREO;
-    int BUFFFER_SIZE=2048;
 }

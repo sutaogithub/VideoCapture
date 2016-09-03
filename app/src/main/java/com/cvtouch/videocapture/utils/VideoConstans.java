@@ -8,7 +8,7 @@ package com.cvtouch.videocapture.utils;
  */
 public class VideoConstans {
     public static final String MIME_TYPE = "video/avc";
-    public static final int VIDEO_FRAME_PER_SECOND = 15;
+    public static final int VIDEO_FRAME_PER_SECOND = 30;
     public static final int VIDEO_I_FRAME_INTERVAL = 5;
-    public static final int VIDEO_BITRATE =125000;
+    public static final int VIDEO_BITRATE =2000000;
 }
