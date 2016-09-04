@@ -10,23 +10,25 @@ import android.view.View;
 import android.view.Window;
 import android.widget.Button;
 import android.widget.TextView;
-
 import com.cvtouch.videocapture.R;
-import com.cvtouch.videocapture.recoder.Mp4Recoder;
-import com.cvtouch.videocapture.recoder.VideoRecoder;
-import com.cvtouch.videocapture.recoder.VideoRecordWithMediaRecord;
+import com.cvtouch.videocapture.rencoder.Mp4VideoRecoder;
 import com.cvtouch.videocapture.utils.Constans;
 
 import java.io.File;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainActivity extends Activity implements SurfaceHolder.Callback{
 
     private SurfaceView mSv;
-    private Mp4Recoder mRecoder;
+    private Mp4VideoRecoder mRecoder;
     private TextView mTime;
     private Button mBtn;
-    private VideoRecordWithMediaRecord.RecoderListener mListener;
     private File mFile;
+    private Timer mTimer;
+    private int mTimeCount;
+    private File mSaveFile;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -37,13 +39,17 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
         initEvent();
     }
 
-    private void initEvent() {
-        mListener=new VideoRecordWithMediaRecord.RecoderListener() {
+    private void startTimer(){
+        mTimeCount=0;
+        mTimer=new Timer();
+        mTimer.schedule( new TimerTask() {
             @Override
-            public void timeInSecond(long time) {
-                long hour=time/3600;
-                int minute= (int) ((time-hour*3600)/60);
-                int second= (int) (time-hour*3600-minute*60);
+            public  void run() {
+                //  TODO Auto-generated method stub
+                mTimeCount++;
+                int hour=mTimeCount/3600;
+                int minute= (int) ((mTimeCount-hour*3600)/60);
+                int second= (int) (mTimeCount-hour*3600-minute*60);
                 final String min=minute>=10?minute+"":"0"+minute;
                 final String sec=second>=10?second+"":"0"+second;
                 final String hou=hour>=10?hour+"":"0"+hour;
@@ -54,17 +60,15 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
                     }
                 });
             }
-
-            @Override
-            public void saveFile(String path) {
-                mFile=new File(path);
-            }
-        };
-//        mRecoder.setRecordListener(mListener);
+        }, 0,1000);
+    }
+    private void initEvent() {
         mBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if(mRecoder.isRecording()){
+                    mSaveFile=mRecoder.getSaveFile();
+                    mTimer.cancel();
                     mRecoder.stopRecording();
                     mTime.setVisibility(View.GONE);
                     mBtn.setBackgroundResource(R.drawable.start);
@@ -74,6 +78,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
                     mTime.setText("00:00:00");
                     mTime.setVisibility(View.VISIBLE);
                     mBtn.setBackgroundResource(R.drawable.stop);
+                    startTimer();
                 }
             }
         });
@@ -90,7 +95,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
         dialog.setButton(AlertDialog.BUTTON_NEGATIVE, "取消", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-//                mFile.delete();
+                if(mSaveFile!=null&&mSaveFile.exists()){
+                    mSaveFile.delete();
+                }
                 dialog.dismiss();
             }
         });
@@ -114,12 +121,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        mRecoder.release();
+        mRecoder.stopRecording();
     }
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        mRecoder=new Mp4Recoder(mSv.getHolder());
+        mRecoder=new Mp4VideoRecoder(mSv.getHolder());
     }
 
     @Override

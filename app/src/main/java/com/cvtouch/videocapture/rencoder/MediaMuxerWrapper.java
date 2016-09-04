@@ -22,13 +22,6 @@ package com.cvtouch.videocapture.rencoder;
  * All files in the folder are under this Apache License, Version 2.0.
 */
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.text.SimpleDateFormat;
-import java.util.GregorianCalendar;
-import java.util.Locale;
-
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
@@ -36,11 +29,21 @@ import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.cvtouch.videocapture.utils.Constans;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
+import java.util.GregorianCalendar;
+import java.util.Locale;
+
 public class MediaMuxerWrapper {
 	private static final boolean DEBUG = false;	// TODO set false on release
 	private static final String TAG = "MediaMuxerWrapper";
 
-	private static final String DIR_NAME = "AVRecSample";
+	private static final String DIR_NAME = "录像";
     private static final SimpleDateFormat mDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.US);
 
 	private String mOutputPath;
@@ -49,6 +52,7 @@ public class MediaMuxerWrapper {
 	private boolean mIsStarted;
 	private MediaEncoder mVideoEncoder, mAudioEncoder;
 
+	private File mSaveFile;
 	/**
 	 * Constructor
 	 * @param ext extension of output file
@@ -57,7 +61,7 @@ public class MediaMuxerWrapper {
 	public MediaMuxerWrapper(String ext) throws IOException {
 		if (TextUtils.isEmpty(ext)) ext = ".mp4";
 		try {
-			mOutputPath = getCaptureFile(Environment.DIRECTORY_MOVIES, ext).toString();
+			mOutputPath = getCaptureFile(ext).toString();
 		} catch (final NullPointerException e) {
 			throw new RuntimeException("This app has no permission of writing external storage");
 		}
@@ -175,19 +179,24 @@ public class MediaMuxerWrapper {
 //**********************************************************************
     /**
      * generate output file
-     * @param type Environment.DIRECTORY_MOVIES / Environment.DIRECTORY_DCIM etc.
+     *
      * @param ext .mp4(.m4a for audio) or .png
      * @return return null when this app has no writing permission to external storage.
      */
-    public static final File getCaptureFile(final String type, final String ext) {
-		final File dir = new File(Environment.getExternalStoragePublicDirectory(type), DIR_NAME);
+    public  final File getCaptureFile(final String ext) {
+		final File dir = new File(Constans.SAVE_PATH);
 		Log.d(TAG, "path=" + dir.toString());
 		dir.mkdirs();
         if (dir.canWrite()) {
-        	return new File(dir, getDateTimeString() + ext);
+			mSaveFile=new File(dir, getDateTimeString() + ext);
+        	return mSaveFile;
         }
     	return null;
     }
+
+	public File getSaveFile(){
+		return mSaveFile;
+	}
 
     /**
      * get current date and time as String

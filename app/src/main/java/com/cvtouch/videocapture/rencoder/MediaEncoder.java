@@ -22,6 +22,9 @@ package com.cvtouch.videocapture.rencoder;
  * All files in the folder are under this Apache License, Version 2.0.
 */
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
@@ -37,6 +40,7 @@ public abstract class MediaEncoder implements Runnable {
 	protected static final int TIMEOUT_USEC = 10000;	// 10[msec]
 	protected static final int MSG_FRAME_AVAILABLE = 1;
 	protected static final int MSG_STOP_RECORDING = 9;
+	private FileOutputStream mOutput;
 
 	public interface MediaEncoderListener {
 		public void onPrepared(MediaEncoder encoder);
@@ -89,7 +93,12 @@ public abstract class MediaEncoder implements Runnable {
 		mWeakMuxer = new WeakReference<MediaMuxerWrapper>(muxer);
 		muxer.addEncoder(this);
 		mListener = listener;
-        synchronized (mSync) {
+		try {
+			mOutput=new FileOutputStream(new File("/sdcard/h264"));
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		synchronized (mSync) {
             // create BufferInfo here for effectiveness(to reduce GC)
             mBufferInfo = new MediaCodec.BufferInfo();
             // wait for starting thread
@@ -285,7 +294,45 @@ public abstract class MediaEncoder implements Runnable {
         }
     }
 
-    /**
+	/**
+	 * Method to set byte array to the MediaCodec encoder
+	 * @param buffer
+	 * @param presentationTimeUs
+	 */
+	protected void encode(final byte[] buffer, final long presentationTimeUs) {
+		if (!mIsCapturing) return;
+		final ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
+		while (mIsCapturing) {
+			final int inputBufferIndex = mMediaCodec.dequeueInputBuffer(TIMEOUT_USEC);
+			if (inputBufferIndex >= 0) {
+				final ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
+				inputBuffer.clear();
+				if (buffer != null) {
+					inputBuffer.put(buffer,0,buffer.length);
+				}
+//	            if (DEBUG) Log.v(TAG, "encode:queueInputBuffer");
+				if (buffer.length <= 0) {
+					// send EOS
+					mIsEOS = true;
+					if (DEBUG) Log.i(TAG, "send BUFFER_FLAG_END_OF_STREAM");
+					mMediaCodec.queueInputBuffer(inputBufferIndex, 0, 0,
+							presentationTimeUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+					break;
+				} else {
+					mMediaCodec.queueInputBuffer(inputBufferIndex, 0, buffer.length,
+							presentationTimeUs, 0);
+				}
+				break;
+			} else if (inputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
+				// wait for MediaCodec encoder is ready to encode
+				// nothing to do here because MediaCodec#dequeueInputBuffer(TIMEOUT_USEC)
+				// will wait for maximum TIMEOUT_USEC(10msec) on each call
+			}
+		}
+	}
+
+
+	/**
      * drain encoded data and write them to muxer
      */
     protected void drain() {
@@ -363,7 +410,17 @@ LOOP:	while (mIsCapturing) {
                     }
                     // write encoded data to muxer(need to adjust presentationTimeUs.
                    	mBufferInfo.presentationTimeUs = getPTSUs();
-                   	muxer.writeSampleData(mTrackIndex, encodedData, mBufferInfo);
+					byte[] data=new byte[mBufferInfo.size];
+					encodedData.get(data);
+					try {
+						mOutput.write(data);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					encodedData.position(mBufferInfo.offset);
+					encodedData.limit(mBufferInfo.offset+mBufferInfo.size);
+					muxer.writeSampleData(mTrackIndex, encodedData, mBufferInfo);
+
 					prevOutputPTSUs = mBufferInfo.presentationTimeUs;
                 }
                 // return buffer to encoder
