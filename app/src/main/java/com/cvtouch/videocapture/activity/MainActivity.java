@@ -121,7 +121,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        mRecoder.stopRecording();
+        mRecoder.release();
     }
 
     @Override

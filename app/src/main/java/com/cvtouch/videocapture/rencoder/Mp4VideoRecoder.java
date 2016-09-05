@@ -24,6 +24,8 @@ public class Mp4VideoRecoder {
     private MediaVideoEncoder mVideoEncoder;
     private final String TAG="Mp4VideoRecoder";
     private static final boolean DEBUG = false;	// TODO set false on release
+    private byte[] mCameraBuffer;
+
     public Mp4VideoRecoder(SurfaceHolder surface){
         mPreview=surface;
         initCamera();
@@ -59,6 +61,14 @@ public class Mp4VideoRecoder {
             }
         }
     }
+    public void release(){
+        if(isRecording){
+            stopRecording();
+        }
+        mCamera.stopPreview();
+        mCamera.release();
+    }
+
     public File getSaveFile(){
         if(mMuxer!=null){
             return mMuxer.getSaveFile();
@@ -72,8 +82,8 @@ public class Mp4VideoRecoder {
         if(mCamera ==null)
             mCamera = Camera.open(Camera.CameraInfo.CAMERA_FACING_BACK);
         Camera.Parameters parameters = mCamera.getParameters();
-        List<int[]> fps=parameters.getSupportedPreviewFpsRange();
-        List<Camera.Size> videoSize=parameters.getSupportedPreviewSizes();
+//        List<int[]> fps=parameters.getSupportedPreviewFpsRange();
+//        List<Camera.Size> videoSize=parameters.getSupportedPreviewSizes();
 //        WIDTH=videoSize.get(videoSize.size()-1).width;
 //        HEIGHT=videoSize.get(videoSize.size()-1).height;
         parameters.setFlashMode("off");
@@ -81,30 +91,33 @@ public class Mp4VideoRecoder {
         parameters.setSceneMode(Camera.Parameters.SCENE_MODE_AUTO);
         parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
         //这个属性要根据硬编码所支持的颜色格式来定默认是nv21，设备需支持COLOR_FormatYUV420SemiPlanar，yv12设备需支持COLOR_FormatYUV420Planar
-        parameters.setPreviewFormat(ImageFormat.YV12);
+//        parameters.setPreviewFormat(ImageFormat.YV12);
         //这两个属性 如果这两个属性设置的和真实手机的不一样时，就会报错
         parameters.setPreviewSize(WIDTH,HEIGHT);
         parameters.setPictureSize(WIDTH,HEIGHT);
         mCamera.setParameters(parameters);
-//        mCameraBuffer=new byte[WIDTH*HEIGHT*3/2];
-//        mCamera.addCallbackBuffer(mCameraBuffer);
+        mCameraBuffer=new byte[WIDTH*HEIGHT*3/2];
+        mCamera.addCallbackBuffer(mCameraBuffer);
         if (mCamera != null) {
             try {
                 mCamera.setPreviewDisplay(mPreview);
-                mCamera.setPreviewCallback(new Camera.PreviewCallback() {
+                mCamera.setPreviewCallbackWithBuffer(new Camera.PreviewCallback() {
                     @Override
                     public void onPreviewFrame(byte[] data, Camera camera) {
-                        if(data!=null&&mVideoEncoder!=null){
+                        if(isRecording&&data!=null&&mVideoEncoder!=null){
                             try {
-                                swapYV12UV(data);
+//                                swapYV12UV(data);
+                                swapNV21(data);
                                 Frame frame=new Frame(data,System.nanoTime());
                                 mVideoEncoder.addFrame(frame);
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
                         }
+                        mCamera.addCallbackBuffer(mCameraBuffer);
                     }
                 });
+                mCamera.startPreview();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -115,14 +128,14 @@ public class Mp4VideoRecoder {
         public void onPrepared(final MediaEncoder encoder) {
             if (DEBUG) Log.v(TAG, "onPrepared:encoder=" + encoder);
             if (encoder instanceof MediaVideoEncoder){
-                mCamera.startPreview();
+//                mCamera.startPreview();
             }
         }
         @Override
         public void onStopped(final MediaEncoder encoder) {
             if (DEBUG) Log.v(TAG, "onStopped:encoder=" + encoder);
             if (encoder instanceof MediaVideoEncoder) {
-                mCamera.stopPreview();
+
             }
         }
     };

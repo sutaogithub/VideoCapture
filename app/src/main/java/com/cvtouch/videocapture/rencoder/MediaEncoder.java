@@ -40,7 +40,7 @@ public abstract class MediaEncoder implements Runnable {
 	protected static final int TIMEOUT_USEC = 10000;	// 10[msec]
 	protected static final int MSG_FRAME_AVAILABLE = 1;
 	protected static final int MSG_STOP_RECORDING = 9;
-	private FileOutputStream mOutput;
+
 
 	public interface MediaEncoderListener {
 		public void onPrepared(MediaEncoder encoder);
@@ -93,11 +93,6 @@ public abstract class MediaEncoder implements Runnable {
 		mWeakMuxer = new WeakReference<MediaMuxerWrapper>(muxer);
 		muxer.addEncoder(this);
 		mListener = listener;
-		try {
-			mOutput=new FileOutputStream(new File("/sdcard/h264"));
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
 		synchronized (mSync) {
             // create BufferInfo here for effectiveness(to reduce GC)
             mBufferInfo = new MediaCodec.BufferInfo();
@@ -410,17 +405,9 @@ LOOP:	while (mIsCapturing) {
                     }
                     // write encoded data to muxer(need to adjust presentationTimeUs.
                    	mBufferInfo.presentationTimeUs = getPTSUs();
-					byte[] data=new byte[mBufferInfo.size];
-					encodedData.get(data);
-					try {
-						mOutput.write(data);
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
 					encodedData.position(mBufferInfo.offset);
 					encodedData.limit(mBufferInfo.offset+mBufferInfo.size);
 					muxer.writeSampleData(mTrackIndex, encodedData, mBufferInfo);
-
 					prevOutputPTSUs = mBufferInfo.presentationTimeUs;
                 }
                 // return buffer to encoder
