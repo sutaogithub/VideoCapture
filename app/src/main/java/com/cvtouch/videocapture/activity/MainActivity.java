@@ -3,6 +3,8 @@ package com.cvtouch.videocapture.activity;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -10,6 +12,8 @@ import android.view.View;
 import android.view.Window;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
+
 import com.cvtouch.videocapture.R;
 import com.cvtouch.videocapture.rencoder.Mp4VideoRecoder;
 import com.cvtouch.videocapture.utils.Constans;
@@ -24,11 +28,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
     private Mp4VideoRecoder mRecoder;
     private TextView mTime;
     private Button mBtn;
-    private File mFile;
     private Timer mTimer;
     private int mTimeCount;
     private File mSaveFile;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -85,24 +87,74 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
     }
 
     private void shouSaveDialog() {
-        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("录制结束").setMessage("是否保存到/sdcard/录像？").create();
-        dialog.setButton(AlertDialog.BUTTON_POSITIVE, "保存", new DialogInterface.OnClickListener() {
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("录制结束").setMessage("是否保存到目录：/sdcard/录像？").create();
+        dialog.setButton(AlertDialog.BUTTON_NEUTRAL, "保存", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
+                String path=mSaveFile.getAbsolutePath();
+                showContinueDialog("已经保存到："+path+"，是否继续使用？");
                 dialog.dismiss();
             }
         });
         dialog.setButton(AlertDialog.BUTTON_NEGATIVE, "取消", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
+
                 if(mSaveFile!=null&&mSaveFile.exists()){
                     mSaveFile.delete();
                 }
+                showContinueDialog("已清除，是否继续使用？");
                 dialog.dismiss();
             }
         });
+        dialog.setButton(AlertDialog.BUTTON_POSITIVE, "另存为", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                Intent intent = new Intent(MainActivity.this, DirectoryPicker.class);
+                startActivityForResult(intent, DirectoryPicker.PICK_DIRECTORY);
+            }
+        });
+        dialog.setCancelable(false);
         dialog.show();
     }
+
+    private void showContinueDialog(String message){
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("录制结束").setMessage(message).create();
+        dialog.setButton(AlertDialog.BUTTON_POSITIVE, "继续使用", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        dialog.setButton(AlertDialog.BUTTON_NEGATIVE, "退出", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+                finish();
+            }
+        });
+        dialog.setCancelable(false);
+        dialog.show();
+    }
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        // TODO Auto-generated method stub
+        if(requestCode == DirectoryPicker.PICK_DIRECTORY ) {
+            if(resultCode == RESULT_OK){
+                Bundle extras = data.getExtras();
+                String path = (String) extras.get(DirectoryPicker.CHOSEN_DIRECTORY);
+                showContinueDialog("已经保存到："+path+"，是否继续使用？");
+                mSaveFile.renameTo(new File(path+'/'+mSaveFile.getName()));
+            }else {
+                showContinueDialog("已清除，是否继续使用？");
+                if(mSaveFile!=null&&mSaveFile.exists()){
+                    mSaveFile.delete();
+                }
+            }
+
+        }
+    }
+
 
     private void initView() {
         mSv= (SurfaceView) findViewById(R.id.sv);
